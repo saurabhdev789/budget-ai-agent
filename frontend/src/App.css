@@ -1,7 +1,23 @@
 :root {
   font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
-  color: #102428;
-  background: radial-gradient(circle at 20% 0%, #fef6db 0%, #f8fcf9 45%, #e6f2ee 100%);
+  --bg: radial-gradient(circle at 20% 0%, #fef6db 0%, #f8fcf9 45%, #e6f2ee 100%);
+  --text: #102428;
+  --muted: #35545a;
+  --eyebrow: #0e7c66;
+  --panel-bg: rgba(255, 255, 255, 0.82);
+  --panel-border: #d5e6df;
+  --button-bg: #ffffff;
+  --button-border: #bed5cc;
+  --button-text: #102428;
+  --button-active-bg: #0e7c66;
+  --button-active-text: #ffffff;
+  --input-bg: #ffffff;
+  --input-text: #102428;
+  --input-border: #c8d8d4;
+  --card-bg: #ffffff;
+  --card-border: #d7e6e0;
+  --card-muted: #55716d;
+  --error: #b42318;
 }
 
 * {
@@ -10,6 +26,8 @@
 
 body {
   margin: 0;
+  color: var(--text);
+  background: var(--bg);
 }
 
 #root {
@@ -31,19 +49,19 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
-  color: #0e7c66;
+  color: var(--eyebrow);
   margin: 0;
 }
 
 .subtext {
   max-width: 780px;
-  color: #35545a;
+  color: var(--muted);
 }
 
 .panel {
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--panel-bg);
   backdrop-filter: blur(4px);
-  border: 1px solid #d5e6df;
+  border: 1px solid var(--panel-border);
   border-radius: 20px;
   padding: 1rem;
   margin-top: 1rem;
@@ -56,17 +74,18 @@ body {
 }
 
 .mode-switch button {
-  border: 1px solid #bed5cc;
+  border: 1px solid var(--button-border);
   border-radius: 999px;
   padding: 0.5rem 1rem;
   cursor: pointer;
-  background: #fff;
+  background: var(--button-bg);
+  color: var(--button-text);
 }
 
 .mode-switch .active {
-  background: #0e7c66;
-  color: #fff;
-  border-color: #0e7c66;
+  background: var(--button-active-bg);
+  color: var(--button-active-text);
+  border-color: var(--button-active-bg);
 }
 
 .grid {
@@ -81,14 +100,21 @@ label {
   gap: 0.4rem;
   font-size: 0.92rem;
   text-transform: capitalize;
+  color: var(--text);
 }
 
 input,
 select {
-  border: 1px solid #c8d8d4;
+  border: 1px solid var(--input-border);
   border-radius: 10px;
   padding: 0.55rem 0.65rem;
   font-size: 0.95rem;
+  background: var(--input-bg);
+  color: var(--input-text);
+}
+
+input::placeholder {
+  color: color-mix(in srgb, var(--input-text) 55%, transparent);
 }
 
 .uploader {
@@ -106,7 +132,7 @@ select {
 }
 
 .error {
-  color: #b42318;
+  color: var(--error);
   margin-top: 0.8rem;
 }
 
@@ -121,21 +147,45 @@ select {
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #d7e6e0;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 14px;
   padding: 0.8rem;
 }
 
 .card p {
   margin: 0;
-  color: #55716d;
+  color: var(--card-muted);
   font-size: 0.85rem;
 }
 
 .card h3 {
   margin: 0.4rem 0 0;
   font-size: 1.15rem;
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: radial-gradient(circle at 20% 0%, #1a2230 0%, #121826 45%, #0d121f 100%);
+    --text: #e9f3ff;
+    --muted: #bfd0e4;
+    --eyebrow: #7ad5c1;
+    --panel-bg: rgba(18, 26, 38, 0.86);
+    --panel-border: #2b3a55;
+    --button-bg: #1c2740;
+    --button-border: #3c5278;
+    --button-text: #e9f3ff;
+    --button-active-bg: #25a78a;
+    --button-active-text: #ffffff;
+    --input-bg: #111a2d;
+    --input-text: #ecf4ff;
+    --input-border: #365079;
+    --card-bg: #111b2f;
+    --card-border: #2e4568;
+    --card-muted: #b5c9df;
+    --error: #ff8f8f;
+  }
 }
 
 @media (max-width: 640px) {
@@ -150,4 +200,42 @@ select {
   .mode-switch button {
     flex: 1;
   }
+}
+
+.prediction-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: end;
+}
+
+.prediction-box {
+  margin-top: 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 0.9rem;
+  white-space: pre-wrap;
+  color: var(--text);
+  line-height: 1.45;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.markdown-output p,
+.markdown-output ul,
+.markdown-output ol {
+  margin: 0 0 0.75rem;
+}
+
+.markdown-output ul,
+.markdown-output ol {
+  padding-left: 1.2rem;
+}
+
+.markdown-output h1,
+.markdown-output h2,
+.markdown-output h3 {
+  margin: 0.4rem 0 0.75rem;
+  color: var(--text);
 }

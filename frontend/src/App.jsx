@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import "./App.css";
 
 const defaultInput = {
@@ -15,18 +17,20 @@ const defaultInput = {
   opening_cash: 100000,
 };
 
-const requiredNumericFields = [
-  "units_sold",
-  "unit_price",
-  "unit_cogs",
-  "operating_expenses",
-  "depreciation",
-  "amortization",
-  "interest",
-  "tax_rate",
-  "capex",
-  "opening_cash",
+const fieldConfig = [
+  { key: "units_sold", label: "Units Sold", placeholder: "e.g. 15000" },
+  { key: "unit_price", label: "Unit Selling Price", placeholder: "e.g. 24" },
+  { key: "unit_cogs", label: "Unit Cost (COGS)", placeholder: "e.g. 11" },
+  { key: "operating_expenses", label: "Operating Expenses", placeholder: "e.g. 120000" },
+  { key: "depreciation", label: "Depreciation", placeholder: "e.g. 8000" },
+  { key: "amortization", label: "Amortization", placeholder: "e.g. 2000" },
+  { key: "interest", label: "Interest", placeholder: "e.g. 3000" },
+  { key: "tax_rate", label: "Tax Rate (decimal)", placeholder: "e.g. 0.25" },
+  { key: "capex", label: "Capital Investment (Capex)", placeholder: "e.g. 25000" },
+  { key: "opening_cash", label: "Opening Cash", placeholder: "e.g. 100000" },
 ];
+
+const requiredNumericFields = fieldConfig.map((f) => f.key);
 
 function pct(num, den) {
   if (!den) return 0;
@@ -109,6 +113,10 @@ export default function App() {
   const [mode, setMode] = useState("form");
   const [formData, setFormData] = useState(defaultInput);
   const [error, setError] = useState("");
+  const [model, setModel] = useState("llama3.1:8b");
+  const [prediction, setPrediction] = useState("");
+  const [predictionError, setPredictionError] = useState("");
+  const [loadingPrediction, setLoadingPrediction] = useState(false);
 
   const financials = useMemo(() => calculateFinancials(formData), [formData]);
 
@@ -147,6 +155,50 @@ export default function App() {
     event.preventDefault();
     const validationError = validateInput(formData);
     setError(validationError || "");
+  };
+
+  const generatePrediction = async () => {
+    const validationError = validateInput(formData);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setPrediction("");
+    setPredictionError("");
+    setLoadingPrediction(true);
+
+    const prompt = [
+      `You are a CFO assistant for a small company selling physical goods.`,
+      `Given these calculated budget metrics for a ${formData.period} plan, provide:`,
+      `1) 5 practical budget actions`,
+      `2) 3 risk alerts`,
+      `3) 3 scenario ideas (upside/base/downside)`,
+      `Keep advice concise and numeric where possible.`,
+      `Metrics JSON:`,
+      JSON.stringify(financials, null, 2),
+    ].join("\n");
+
+    try {
+      const response = await fetch("http://localhost:11434/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, prompt, stream: false }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama request failed (${response.status})`);
+      }
+
+      const data = await response.json();
+      setPrediction(data.response?.trim() || "No prediction text returned by model.");
+    } catch (err) {
+      setPredictionError(
+        `Could not fetch prediction from Ollama. Ensure 'ollama serve' is running and model '${model}' exists. ${err.message}`
+      );
+    } finally {
+      setLoadingPrediction(false);
+    }
   };
 
   return (
@@ -197,15 +249,18 @@ export default function App() {
               </select>
             </label>
 
-            {requiredNumericFields.map((field) => (
-              <label key={field}>
-                {field.replaceAll("_", " ")}
+            {fieldConfig.map((field) => (
+              <label key={field.key} htmlFor={field.key}>
+                {field.label}
                 <input
+                  id={field.key}
+                  name={field.key}
                   type="number"
                   step="any"
                   min="0"
-                  value={formData[field]}
-                  onChange={(e) => handleNumberChange(field, e.target.value)}
+                  placeholder={field.placeholder}
+                  value={formData[field.key]}
+                  onChange={(e) => handleNumberChange(field.key, e.target.value)}
                 />
               </label>
             ))}
@@ -236,6 +291,33 @@ export default function App() {
           <MetricCard label="Opening Cash" value={formatMoney(financials.opening_cash)} />
           <MetricCard label="Closing Cash (Post-Capex)" value={formatMoney(financials.closing_cash)} />
         </div>
+      </section>
+
+      <section className="panel">
+        <h2>AI Predictions</h2>
+        <div className="prediction-controls">
+          <label htmlFor="model-select">
+            Model
+            <select id="model-select" value={model} onChange={(e) => setModel(e.target.value)}>
+              <option value="llama3.1:8b">llama3.1:8b (larger)</option>
+              <option value="llama3.2:3b">llama3.2:3b (smaller)</option>
+            </select>
+          </label>
+
+          <button type="button" className="submit-btn" onClick={generatePrediction} disabled={loadingPrediction}>
+            {loadingPrediction ? "Generating..." : "Generate AI Predictions"}
+          </button>
+        </div>
+
+        {predictionError ? <p className="error">{predictionError}</p> : null}
+
+        {prediction ? (
+          <div className="prediction-box markdown-output">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{prediction}</ReactMarkdown>
+          </div>
+        ) : (
+          <p className="subtext">No prediction generated yet.</p>
+        )}
       </section>
     </div>
   );
