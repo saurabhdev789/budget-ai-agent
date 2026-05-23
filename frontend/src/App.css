@@ -1,0 +1,153 @@
+:root {
+  font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color: #102428;
+  background: radial-gradient(circle at 20% 0%, #fef6db 0%, #f8fcf9 45%, #e6f2ee 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.hero h1 {
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  margin: 0.4rem 0;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #0e7c66;
+  margin: 0;
+}
+
+.subtext {
+  max-width: 780px;
+  color: #35545a;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  border: 1px solid #d5e6df;
+  border-radius: 20px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.mode-switch {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.mode-switch button {
+  border: 1px solid #bed5cc;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  background: #fff;
+}
+
+.mode-switch .active {
+  background: #0e7c66;
+  color: #fff;
+  border-color: #0e7c66;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+  text-transform: capitalize;
+}
+
+input,
+select {
+  border: 1px solid #c8d8d4;
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.95rem;
+}
+
+.uploader {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.submit-btn {
+  border: none;
+  border-radius: 12px;
+  background: #1c8f77;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error {
+  color: #b42318;
+  margin-top: 0.8rem;
+}
+
+.results {
+  margin-top: 1.4rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #d7e6e0;
+  border-radius: 14px;
+  padding: 0.8rem;
+}
+
+.card p {
+  margin: 0;
+  color: #55716d;
+  font-size: 0.85rem;
+}
+
+.card h3 {
+  margin: 0.4rem 0 0;
+  font-size: 1.15rem;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 1rem 0.8rem 2rem;
+  }
+
+  .mode-switch {
+    width: 100%;
+  }
+
+  .mode-switch button {
+    flex: 1;
+  }
+}

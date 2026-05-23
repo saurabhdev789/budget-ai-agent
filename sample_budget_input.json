@@ -1,0 +1,13 @@
+{
+  "period": "monthly",
+  "units_sold": 15000,
+  "unit_price": 24,
+  "unit_cogs": 11,
+  "operating_expenses": 120000,
+  "depreciation": 8000,
+  "amortization": 2000,
+  "interest": 3000,
+  "tax_rate": 0.25,
+  "capex": 25000,
+  "opening_cash": 100000
+}
