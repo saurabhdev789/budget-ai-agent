@@ -1,0 +1,2 @@
+period,units_sold,unit_price,unit_cogs,operating_expenses,depreciation,amortization,interest,tax_rate,capex,opening_cash
+monthly,15000,24,11,120000,8000,2000,3000,0.25,25000,100000

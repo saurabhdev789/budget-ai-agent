@@ -1,20 +1,21 @@
 import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import * as XLSX from "xlsx";
 import "./App.css";
 
 const defaultInput = {
   period: "monthly",
-  units_sold: 15000,
-  unit_price: 24,
-  unit_cogs: 11,
-  operating_expenses: 120000,
-  depreciation: 8000,
-  amortization: 2000,
-  interest: 3000,
-  tax_rate: 0.25,
-  capex: 25000,
-  opening_cash: 100000,
+  units_sold: "",
+  unit_price: "",
+  unit_cogs: "",
+  operating_expenses: "",
+  depreciation: "",
+  amortization: "",
+  interest: "",
+  tax_rate: "",
+  capex: "",
+  opening_cash: "",
 };
 
 const fieldConfig = [
@@ -37,36 +38,55 @@ function pct(num, den) {
   return (num / den) * 100;
 }
 
+function toNumber(value) {
+  if (value === "" || value === null || value === undefined) {
+    return 0;
+  }
+  const n = Number(value);
+  return Number.isNaN(n) ? 0 : n;
+}
+
 function calculateFinancials(input) {
-  const revenue = input.units_sold * input.unit_price;
-  const cogs = input.units_sold * input.unit_cogs;
+  const unitsSold = toNumber(input.units_sold);
+  const unitPrice = toNumber(input.unit_price);
+  const unitCogs = toNumber(input.unit_cogs);
+  const operatingExpenses = toNumber(input.operating_expenses);
+  const depreciation = toNumber(input.depreciation);
+  const amortization = toNumber(input.amortization);
+  const interest = toNumber(input.interest);
+  const taxRate = toNumber(input.tax_rate);
+  const capex = toNumber(input.capex);
+  const openingCash = toNumber(input.opening_cash);
+
+  const revenue = unitsSold * unitPrice;
+  const cogs = unitsSold * unitCogs;
   const gross_profit = revenue - cogs;
   const gross_margin_pct = pct(gross_profit, revenue);
 
-  const ebitda = gross_profit - input.operating_expenses;
+  const ebitda = gross_profit - operatingExpenses;
   const ebitda_pct = pct(ebitda, revenue);
 
-  const ebit = ebitda - input.depreciation - input.amortization;
-  const pbt = ebit - input.interest;
-  const tax = Math.max(0, pbt * input.tax_rate);
+  const ebit = ebitda - depreciation - amortization;
+  const pbt = ebit - interest;
+  const tax = Math.max(0, pbt * taxRate);
   const net_profit = pbt - tax;
   const net_profit_pct = pct(net_profit, revenue);
 
-  const closing_cash = input.opening_cash + net_profit - input.capex;
+  const closing_cash = openingCash + net_profit - capex;
 
   return {
     revenue,
     cogs,
     gross_profit,
     gross_margin_pct,
-    operating_expenses: input.operating_expenses,
+    operating_expenses: operatingExpenses,
     ebitda,
     ebitda_pct,
     tax,
     net_profit,
     net_profit_pct,
-    capex: input.capex,
-    opening_cash: input.opening_cash,
+    capex,
+    opening_cash: openingCash,
     closing_cash,
   };
 }
@@ -109,14 +129,43 @@ function validateInput(raw) {
   return null;
 }
 
+function normalizeSpreadsheetRow(row) {
+  if (!row || typeof row !== "object") {
+    return {};
+  }
+
+  const normalizedEntries = Object.entries(row).map(([key, value]) => [
+    key.trim().toLowerCase().replaceAll(" ", "_"),
+    value,
+  ]);
+
+  return Object.fromEntries(normalizedEntries);
+}
+
+function parseCsvText(text) {
+  const workbook = XLSX.read(text, { type: "string" });
+  const sheetName = workbook.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+  return normalizeSpreadsheetRow(rows[0]);
+}
+
+function parseExcelBuffer(arrayBuffer) {
+  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+  const sheetName = workbook.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+  return normalizeSpreadsheetRow(rows[0]);
+}
+
 export default function App() {
   const [mode, setMode] = useState("form");
   const [formData, setFormData] = useState(defaultInput);
   const [error, setError] = useState("");
-  const [model, setModel] = useState("llama3.1:8b");
+  const [model, setModel] = useState("llama3.2:3b");
   const [prediction, setPrediction] = useState("");
   const [predictionError, setPredictionError] = useState("");
   const [loadingPrediction, setLoadingPrediction] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [parsedFileData, setParsedFileData] = useState(null);
 
   const financials = useMemo(() => calculateFinancials(formData), [formData]);
 
@@ -127,28 +176,58 @@ export default function App() {
     }));
   };
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
+  const parseFile = async (file) => {
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith(".json")) {
       const text = await file.text();
-      const parsed = JSON.parse(text);
-      const validationError = validateInput(parsed);
-      if (validationError) {
-        setError(validationError);
-        return;
-      }
-
-      setFormData({
-        ...parsed,
-        ...Object.fromEntries(requiredNumericFields.map((k) => [k, Number(parsed[k])])),
-      });
-      setError("");
-      setMode("upload");
-    } catch {
-      setError("Invalid JSON file. Please upload a valid budget input JSON.");
+      return JSON.parse(text);
     }
+    if (lowerName.endsWith(".csv") || lowerName.endsWith(".tsv") || lowerName.endsWith(".txt")) {
+      const text = await file.text();
+      return parseCsvText(text);
+    }
+    if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+      const buffer = await file.arrayBuffer();
+      return parseExcelBuffer(buffer);
+    }
+    throw new Error("Unsupported file type");
+  };
+
+  const handleFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    setSelectedFile(file || null);
+    setParsedFileData(null);
+    setError("");
+    if (!file) return;
+    try {
+      const parsed = await parseFile(file);
+      setParsedFileData(parsed);
+    } catch {
+      setError(
+        "Invalid file. Upload JSON, Excel (.xlsx/.xls), CSV, or TSV with headers like units_sold, unit_price, unit_cogs, operating_expenses, depreciation, amortization, interest, tax_rate, capex, opening_cash, period."
+      );
+    }
+  };
+
+  const handleFileCalculate = async () => {
+    if (!selectedFile) {
+      setError("Please select a file first.");
+      return;
+    }
+
+    const parsed = parsedFileData || (await parseFile(selectedFile));
+    const validationError = validateInput(parsed);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setFormData({
+      ...parsed,
+      ...Object.fromEntries(requiredNumericFields.map((k) => [k, Number(parsed[k])])),
+    });
+    setError("");
+    setMode("upload");
   };
 
   const handleFormSubmit = (event) => {
@@ -180,7 +259,7 @@ export default function App() {
     ].join("\n");
 
     try {
-      const response = await fetch("http://localhost:11434/api/generate", {
+      const response = await fetch("/ollama/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model, prompt, stream: false }),
@@ -226,14 +305,41 @@ export default function App() {
             className={mode === "upload" ? "active" : ""}
             onClick={() => setMode("upload")}
           >
-            Upload JSON
+            Upload File
           </button>
         </div>
 
         {mode === "upload" ? (
           <div className="uploader">
-            <label htmlFor="budget-file">Upload `sample_budget_input.json`-style file</label>
-            <input id="budget-file" type="file" accept="application/json,.json" onChange={handleFileUpload} />
+            <label htmlFor="budget-file">Upload JSON, Excel, CSV, or TSV (Google Sheets/Numbers export works)</label>
+            <div className="template-links">
+              <a href="/templates/sample_budget_input.xlsx" download>
+                Download Sample Excel (.xlsx)
+              </a>
+              <a href="/templates/sample_budget_input.csv" download>
+                Download Sample CSV (.csv)
+              </a>
+            </div>
+            <input
+              id="budget-file"
+              type="file"
+              accept="application/json,.json,.xlsx,.xls,.csv,.tsv,.txt"
+              onChange={handleFileSelect}
+            />
+            <button type="button" className="submit-btn" onClick={handleFileCalculate}>
+              Calculate from File
+            </button>
+            {parsedFileData ? (
+              <div className="parsed-preview">
+                <h3>Parsed Input Preview</h3>
+                <div className="preview-grid">
+                  <PreviewRow label="Period" value={String(parsedFileData.period ?? "")} />
+                  {fieldConfig.map((field) => (
+                    <PreviewRow key={field.key} label={field.label} value={String(parsedFileData[field.key] ?? "")} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <form className="grid" onSubmit={handleFormSubmit}>
@@ -299,8 +405,8 @@ export default function App() {
           <label htmlFor="model-select">
             Model
             <select id="model-select" value={model} onChange={(e) => setModel(e.target.value)}>
-              <option value="llama3.1:8b">llama3.1:8b (larger)</option>
               <option value="llama3.2:3b">llama3.2:3b (smaller)</option>
+              <option value="llama3.1:8b">llama3.1:8b (larger)</option>
             </select>
           </label>
 
@@ -329,5 +435,14 @@ function MetricCard({ label, value }) {
       <p>{label}</p>
       <h3>{value}</h3>
     </article>
+  );
+}
+
+function PreviewRow({ label, value }) {
+  return (
+    <div className="preview-item">
+      <span>{label}</span>
+      <strong>{value || "-"}</strong>
+    </div>
   );
 }
